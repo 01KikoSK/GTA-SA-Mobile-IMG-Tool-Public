@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA SA Mobile IMG Tool</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #fileLabel {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #imgList {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .imgEntry {
+            border-bottom: 1px solid #eee;
+            padding: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .imgEntry:last-child {
+            border-bottom: none;
+        }
+
+        .imgEntry button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #replaceInput {
+            display: none;
+        }
+
+        #replaceLabel {
+            background-color: #008CBA;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #logArea {
+          margin-top: 20px;
+          border: 1px solid #ddd;
+          padding: 10px;
+          height: 150px;
+          overflow-y: auto;
+          font-family: monospace;
+          background-color: #f9f9f9;
+        }
+        #extractButton{
+          background-color: #4CAF50;
+          color: white;
+          padding: 10px 15px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          margin-top: 10px;
+        }
+        #replaceButton{
+          background-color: #008CBA;
+          color: white;
+          padding: 10px 15px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>GTA SA Mobile IMG Tool (Advanced)</h1>
+
+    <label id="fileLabel" for="fileInput">Select IMG File</label>
+    <input type="file" id="fileInput" accept=".img">
+
+    <div id="imgList"></div>
+    <div id="logArea"></div>
+
+    <button id="extractButton" style="display: none;">Extract Selected</button>
+    <br>
+    <label id="replaceLabel" for="replaceInput" style="display:none">Select Replacement File</label>
+    <input type="file" id="replaceInput" style="display:none">
+    <button id="replaceButton" style="display: none;">Replace Selected</button>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const imgList = document.getElementById('imgList');
+        const extractButton = document.getElementById('extractButton');
+        const replaceInput = document.getElementById('replaceInput');
+        const replaceButton = document.getElementById('replaceButton');
+        const logArea = document.getElementById('logArea');
+        let imgFile = null;
+        let selectedEntry = null;
+        let selectedFileName = null;
+        let fileData = null;
+        let entries = [];
+
+        function log(message) {
+            logArea.innerHTML += message + '\n';
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        fileInput.addEventListener('change', (event) => {
+            imgFile = event.target.files[0];
+            if (imgFile) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    fileData = e.target.result;
+                    parseIMG(fileData);
+                };
+                reader.readAsArrayBuffer(imgFile);
+            }
+        });
+
+        function parseIMG(data) {
+            entries = [];
+            const dataView = new DataView(data);
+            const entryCount = dataView.getUint32(4, true);
+            log(`Entry Count: ${entryCount}`);
+
+            for (let i = 12; i < 12 + entryCount * 32; i += 32) {
+                const offset = dataView.getUint32(i, true);
+                const size = dataView.getUint32(i + 4, true);
+                const nameBytes = new Uint8Array(data.slice(i + 8, i + 32));
+                let name = '';
+                for (let j = 0; j < nameBytes.length; j++) {
+                    if (nameBytes[j] === 0) break;
+                    name += String.fromCharCode(nameBytes[j]);
+                }
+                entries.push({ offset, size, name });
+            }
+            displayEntries();
+        }
+
+        function displayEntries() {
+            imgList.innerHTML = '';
+            entries.forEach(entry => {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'imgEntry';
+                entryDiv.innerHTML = `<span>${entry.name}</span> <button data-name="${entry.name}">Delete</button>`;
+                imgList.appendChild(entryDiv);
+                entryDiv.addEventListener('click', () => {
+                   selectedEntry = entry;
+                   selectedFileName = entry.name;
+                   extractButton.style.display = 'block';
+                   replaceLabel.style.display = 'block';
+                   replaceInput.style.display = 'block';
+                   replaceButton.style.display = 'block';
+                });
+
+                entryDiv.querySelector('button').addEventListener('click', (event) => {
+                  event.stopPropagation();
+                  deleteEntry(entry.name);
+                });
+            });
+        }
+        function deleteEntry(name){
+          log(`Delete functionality not implemented. This is a read only tool currently.`);
+        }
+
+        extractButton.addEventListener('click', () => {
+            if (selectedEntry && fileData) {
+                const blob = new Blob([fileData.slice(selectedEntry.offset, selectedEntry.offset + selectedEntry.size)]);
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = selectedEntry.name;
+                link.click();
+            }
+        });
+
+        replaceButton.addEventListener('click', () => {
+          log(`Replace functionality not implemented. This is a read only tool currently.`);
+        });
+    </script>
+</body>
+</html>
